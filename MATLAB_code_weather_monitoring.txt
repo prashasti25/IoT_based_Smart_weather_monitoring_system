@@ -1,0 +1,67 @@
+% Enter your MATLAB Code below
+% Read data from a ThingSpeak channel over the past 24 hours 
+% to calculate the high and low datas and write to another channel. 
+   
+% Channel ID to read data from 
+readChannelID = 1480637; 
+% Field ID 
+TemperatureFieldID = 1; 
+gas_sensorFieldID = 2;
+rainfall_FieldID = 3;
+wind_FieldID = 4;
+   
+% Channel Read API Key   
+
+readAPIKey = 'Q90LQOIGATHEW7SP'; 
+   
+   
+[tempF,timeStamp1] = thingSpeakRead(readChannelID,'Fields',TemperatureFieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey); 
+[pollutionF,timeStamp2] = thingSpeakRead(readChannelID,'Fields',gas_sensorFieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey); 
+[rainfallF,timeStamp3] = thingSpeakRead(readChannelID,'Fields',rainfall_FieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey);  
+[windF,timeStamp4] = thingSpeakRead(readChannelID,'Fields',wind_FieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey);  
+
+[maxTempF,maxTempIndex] = max(tempF); % Calculate the maximum and minimum temperatures 
+[minTempF,minTempIndex] = min(tempF); 
+
+[maxpollutionF,maxpollutionIndex] = max(pollutionF); % Calculate the maximum and minimum Pollution 
+[minpollutionF,minpollutionIndex] = min(pollutionF); 
+
+[maxrainfallF,maxrainfallIndex] = max(rainfallF); % Calculate the maximum and minimum rainfall 
+[minrainfallF,minrainfallIndex] = min(rainfallF); 
+
+[maxwindF,maxwindIndex] = max(windF); % Calculate the maximum and minimum rainfall 
+[minwindF,minwindIndex] = min(windF); 
+   
+timeMaxTemp = timeStamp1(maxTempIndex); % Select the timestamps at which the maximum and minimum temperatures were measured
+timeMinTemp = timeStamp1(minTempIndex); 
+
+timeMaxpollution = timeStamp2(maxpollutionIndex); % Select the timestamps at which the maximum and minimum pollution were measured
+timeMinpollution = timeStamp2(minpollutionIndex); 
+
+timeMaxrainfall = timeStamp3(maxrainfallIndex); % Select the timestamps at which the maximum and minimum rainfall were measured
+timeMinrainfall = timeStamp3(minrainfallIndex); 
+
+timeMaxwind = timeStamp4(maxwindIndex); % Select the timestamps at which the maximum and minimum wind were measured
+timeMinwind = timeStamp4(minwindIndex); 
+   
+display(maxTempF,'Maximum Temperature for the past 24 hours is'); 
+display(minTempF,'Minimum Temperature for the past 24 hours is'); 
+
+display(maxpollutionF,'Maximum pollution for the past 24 hours is'); 
+display(minpollutionF,'Minimum pollution for the past 24 hours is'); 
+
+display(maxrainfallF,'Maximum rainfall for the past 24 hours is'); 
+display(minrainfallF,'Minimum rainfall for the past 24 hours is'); 
+
+display(maxwindF,'Maximum wind for the past 24 hours is'); 
+display(minwindF,'Minimum wind for the past 24 hours is'); 
+  
+   
+% Replace the [] with channel ID to write data to: 
+writeChannelID = [1480637]; 
+% Enter the Write API Key between the '' below: 
+writeAPIKey = 'O1WB76S0Z5G24Y0O'; 

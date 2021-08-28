@@ -1,0 +1,170 @@
+//Smart weather reporting system
+#include <LiquidCrystal.h>
+
+//temperature sensor variables
+float temp_vout;   
+float temp; 
+float voltage;
+
+//gas sensor variables
+int gas_sensor_port = A1;
+int gas_sensor_value = 0;
+
+//rainfall measurement variables
+float rain;
+const int triggerPin = 10;
+const int echoPin = 9;
+long duration;
+
+//wind speed measurement variables
+float V_wind = 0;
+float Windspeedfloat;
+int Windspeedint;
+//LCD 
+LiquidCrystal lcd(8, 2, 6, 5, 4, 3); //Parameters: (rs, enable, d4, d5, d6, d7)
+
+//WIFI module variables
+String ssid     = "Simulator Wifi";  // SSID to connect to
+String password = "";   //virtual wifi has no password 
+String host     = "api.thingspeak.com"; // Open Weather Map API
+const int httpPort   = 80;
+String url     = "/update?api_key=O1WB76S0Z5G24Y0O&field1="; //ThingSpeak Channel API Key
+
+
+//setting up the wifi module
+void setupESP8266(void)    
+{
+  // Start our ESP8266 Serial Communication
+  Serial.begin(115200);   // Baud rate 
+  Serial.println("AT");   // Serial connection on Tx / Rx port to ESP8266
+  delay(10);              // Wait a little for the ESP to respond
+  
+  if (Serial.find("OK"))
+    Serial.println("ESP8266 OK!!!");  // Connect to Simulator Wifi
+  
+  Serial.println("AT+CWJAP=\"" + ssid + "\",\"" + password + "\""); //AT+CWLAP – list nearby available WiFi networks
+  delay(10);                         // Wait a little for the ESP to respond
+  
+  if (Serial.find("OK"))
+    Serial.println("Connected to WiFi!!!");     // Open TCP connection to the host:
+ 
+  //ESP8266 connects to the server as a TCP client. 
+ 
+  Serial.println("AT+CIPSTART=\"TCP\",\"" + host + "\"," + httpPort);
+  delay(50);                                   // Wait a little for the ESP to respond
+  
+  if (Serial.find("OK")) 
+   Serial.println("ESP8266 Connected to server!!!") ;
+}
+
+//Sends data to Thingspeak
+void send_data(void) 
+{
+  // Construct HTTP call
+  String httpPacket = "GET " + url + String(temp) + "&field2=" + String(gas_sensor_value) + "&field3=" + String(rain) + "&field4=" + String(Windspeedfloat) + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
+  int length = httpPacket.length();
+  // Send our message length
+  Serial.print("AT+CIPSEND=");
+  Serial.println(length);
+  delay(10);        // Wait a little for the ESP to respond if (!Serial.find(">")) return -1;
+  // Send our http request
+  Serial.print(httpPacket);
+  delay(10);       // Wait a little for the ESP to respond
+  if (Serial.find("SEND OK\r\n"))
+    Serial.println("ESP8266 sends data to the server");
+}
+
+void setup() 
+{
+  pinMode(A1, INPUT);     //gas sensor analog input 
+  pinMode(7, OUTPUT);     //gas sensor digital output
+  pinMode(A0, INPUT);     //temperature sensor analog input
+  pinMode(A2, INPUT);     //potentiometer analog input
+  setupESP8266();
+  lcd.begin(16,2);
+  pinMode(triggerPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+}
+
+void loop() 
+{
+  
+  //for temperature sensor
+  temp_vout = analogRead(A0);
+  voltage = temp_vout * 0.0048828125; //convert analog value between 0 to 1023 with 5000mV/5V ADC 
+  temp = (voltage - 0.5) * 100.0;
+  Serial.println("Current temperature: " + String(temp));
+  //---------------------------------------------------------------------------------------------------
+  //for gas sensor 
+  gas_sensor_value = analogRead(gas_sensor_port);
+  Serial.println("Gas sensor value: " + String(gas_sensor_value));
+  if (gas_sensor_value > 200)
+  {
+    tone(7,523,1000);
+  }
+  
+  //-------------------------------------------------------------------------------------------------------
+  //for rainfall measurement
+  digitalWrite(triggerPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigger pin to HIGH state for 10 microseconds
+  digitalWrite(triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(triggerPin, LOW);
+  // Reads the echo pin, and returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  rain = 0.01723 * duration;
+  delay(10); // Delay a little bit to improve simulation performance
+  
+  lcd.setCursor(0,0); // Sets the location at which subsequent text written to the LCD will be displayed
+  lcd.print("Rainfall: "); // Prints string "Rainfall" on the LCD
+  lcd.print(rain); // Prints the distance value from the sensor
+  Serial.println("Rainfall: " + String(rain));
+  delay(10);
+  
+  //-----------------------------------------------------------------------------------------------------
+  //for wind speed measurement
+  float V_wind = analogRead(A2) * (5.0 / 1023.0);  
+  // Voltage converted to MPH
+  Windspeedint = (V_wind - 0.4) * 10 * 2.025 * 2.237;     // For LCD screen output  
+  Windspeedfloat = (V_wind - 0.4) * 10 * 2.025 * 2.237; // For Serial monitor output
+  //wind speed LCD output
+  lcd.setCursor(0,1);        // adjust cursor
+  lcd.print("Wind speed");
+  lcd.print(" ");
+  if (V_wind < 0.4)
+  {         
+    lcd.print("0");
+  }     	 
+  else 
+  {				      
+    lcd.print(Windspeedint);
+  }
+  lcd.print("MPH");
+  //wind speed serial monitor output
+  Serial.print("Wind Speed: ");       
+  if (Windspeedfloat <= 0)
+  {            
+    Serial.print("0.0");}				
+  else{									 
+    Serial.print(Windspeedfloat);}	// Output Wind speed value
+  Serial.println(" MPH");				
+  delay(100);
+  
+  Serial.print("Anemometer Voltage: ");
+  if (V_wind > 2){						
+    Serial.println("Out of range!");
+  }   
+  else if (V_wind < 0.4)                
+  {				
+    Serial.println("Out of range!");   
+  }
+  else{									 
+    Serial.print(V_wind);				
+    Serial.println(" V");}				
+  
+  //send data to thingspeak
+  send_data();
+  delay(1000);      // delay changed for faster analytics
+}
